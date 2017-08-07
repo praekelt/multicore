@@ -77,8 +77,8 @@ because the overhead becomes too much.::
 The ``Task`` constructor accepts an optional parameter ``max_load_average``. If
 the load average for the last minute is larger than a defined threshold then
 ``None`` is returned and your code must cater for the sequential code path.
-Note that the threshold is specified as for a single core machine, so we
-multiply it with the number of workers.
+Note that the threshold is specified as for a single core machine, so typically
+less than one.
 
 The ``run`` method accepts an optional parameter ``serialization_format`` with value
 ``pickle`` (the default), ``json`` or ``string``. Pickle is slow and safe. If you
