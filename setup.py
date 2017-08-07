@@ -5,7 +5,7 @@ setup(
     name="multicore",
     description="A library that makes it easy to parallelize Python code.",
     long_description = open("README.rst", "r").read() + open("AUTHORS.rst", "r").read() + open("CHANGELOG.rst", "r").read(),
-    version="1.10.2",
+    version="0.1",
     author="Praekelt Consulting",
     author_email="dev@praekelt.com",
     license="BSD",
