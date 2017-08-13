@@ -99,10 +99,14 @@ class Task(object):
 
     def __init__(self, **kwargs):
         self.count = 0
+        self.complete = False
         # Map buffer index to run index
         self.buffer_index_map = {}
 
     def run(self, runnable, *args, **kwargs):
+        if self.complete:
+            raise exceptions.TaskCompleteError()
+
         global _input_buffers
         global _lock_run
 
@@ -159,6 +163,9 @@ class Task(object):
         self.count += 1
 
     def get(self, timeout=10.0):
+        if self.complete:
+            raise exceptions.TaskCompleteError()
+
         SLEEP = 0.005
 
         # Avoid floating point operations on each loop by calculating the
@@ -176,7 +183,7 @@ class Task(object):
             for buf_index, run_index in self.buffer_index_map.items():
                 if (datas[run_index] is None) and (states[buf_index] in (3, "3")):
                     data = _output_buffers[buf_index][:].decode("utf-8")
-                    if ord(data[0]):
+                    if int(data[:6]):
                         datas[run_index] = data
                         fetches -= 1
 
@@ -187,7 +194,8 @@ class Task(object):
 
             time.sleep(SLEEP)
 
-        # Mark the task as complete
+        # Mark the task as complete on self and input state buffer
+        self.complete = True
         for index in self.buffer_index_map.keys():
             _input_buffers_states[index] = 0 if PY3 else "0"
 
@@ -299,8 +307,7 @@ def fetch_and_run(lock):
 
 
 def initialize(force=False):
-    """Start the queue workers if needed. Called by app.ready and possibly unit
-    tests."""
+    """Start the queue workers if needed. Called by __main__ and unit tests."""
 
     global NUMBER_OF_WORKERS
     global BUFFER_DEPTH
@@ -309,17 +316,6 @@ def initialize(force=False):
     global _input_buffers_states
     global _output_buffers
     global _lock_fetch
-
-    # Multicore only makes sense if we're running as a server or in our unit
-    # tests. There doesn't seem to be a clean way to test for it.
-    if not force:
-        b = False
-        for arg in sys.argv:
-            if (arg == "runserver") or (".wsgi" in arg):
-                b = True
-                break
-        if not b:
-            return
 
     # If we already have workers do nothing
     if _workers:
@@ -343,7 +339,7 @@ def initialize(force=False):
 
 
 def shutdown():
-    """Stop the queue workers. Called by unit tests."""
+    """Stop the queue workers. Called by __main__ and unit tests."""
 
     global _workers
 

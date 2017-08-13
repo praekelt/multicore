@@ -12,23 +12,24 @@ Python Multicore
 Installation
 ------------
 
-#. Install or add ``dill`` and ``multicore`` to your Python path.
+#. Install or add ``multicore`` to your Python path.
 
 Overview
 --------
 
 Python supports multi-threading but the global interpreter lock (GIL) prevents
 us from utilising all CPU cores for CPU heavy tasks. The recommended approach
-is to use Python's multiprocessing module to work around the GIL, but that has its own set of challenges, notably
+is to use Python's multiprocessing library to work around the GIL, but that has its own set of challenges, notably
 the ability to share data between sub-processes is limited.
 
-The goal of the multicore module is to make it as simple as possible to parallelize code
-while incurring the least amount of overhead.
+The goal of the multicore library is to make it as simple as possible to parallelize code
+while incurring the *least* amount of overhead.
 
 Features
 --------
 
 #. Persistent pool of workers enabling persistent database connections.
+#. Memory maps for inter process communication. *Much* faster than multiprocess's own IPC or even pipes.
 #. Can take system load average into account to decide whether parallelization
    is worth it at any given time.
 
@@ -37,7 +38,7 @@ Architecture
 
 Python Multicore is effectively an in-memory queue that is processed by a fixed
 set of workers. It uses memory mapping to avoid the latency imposed by using a
-queing system such as celery. Even pipes are too slow for us!
+queing system such as celery.
 
 Usage
 -----
@@ -48,31 +49,48 @@ because the overhead becomes too much.::
 
     import time
 
-    from multicore import Task
+    from multicore import initialize, shutdown, Task
     from multicore.utils import ranges
 
 
-    def expensive_render(user):
+    # Note the scoping of the "items" variable and the functions
+    items = range(100)
+
+
+    def as_string(item):
+        return str(item)
+
+
+    def expensive_as_string(item):
         time.sleep(0.01)
-        return user.username
+        return str(item)
 
 
-    def multi_expensive_render(start, end):
-        s = ""
-        for user in User.objects.all()[start:end]:
-            s += expensive_render(user)
-        return s
+    def multi_expensive_as_string(start, end):
+        return ",".join([expensive_as_string(item) for item in items[start:end]])
 
 
-    users = User.objects.all()[:100]
-    task = Task()
-    if task:
-        for start, end in ranges(users):
-            # Note we don't pass "users" to run because it can't be pickled
-            task.run(multi_expensive_render, start, end)
-        print ", ".join(task.get())
-    else:
-        print ", ".join([expensive_render(u) for u in users])
+    if __name__ == "__main__":
+
+        # Needs to be called only once for lifetime of process
+        initialize()
+
+        # Example 1: trivial (and slightly pointless) usage
+        task = Task()
+        for i in range(20):
+            task.run(as_string, i)
+        print(", ".join(task.get()))
+
+        # Example 2: divide job optimally using ranges function
+        task = Task()
+        for start, end in ranges(items):
+            # Note we don't pass items because pickling is expensive and defeats
+            # the purpose of the exercize.
+            task.run(multi_expensive_as_string, start, end)
+        print(", ".join(task.get()))
+
+        # Stop the multicore workers
+        shutdown()
 
 The ``Task`` constructor accepts an optional parameter ``max_load_average``. If
 the load average for the last minute is larger than a defined threshold then
