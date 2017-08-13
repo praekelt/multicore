@@ -12,3 +12,7 @@ class NoAvailableInputBufferError(MulticoreError):
 
 class InputBufferTooSmallError(MulticoreError):
     pass
+
+
+class TaskCompleteError(MulticoreError):
+    pass
