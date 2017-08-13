@@ -3,9 +3,9 @@ from setuptools import setup, find_packages
 
 setup(
     name="multicore",
-    description="A library that makes it easy to parallelize Python code.",
+    description="Simpler Python multiprocess coding. Persistent workers, memory maps for minimum overhead.",
     long_description = open("README.rst", "r").read() + open("AUTHORS.rst", "r").read() + open("CHANGELOG.rst", "r").read(),
-    version="0.1",
+    version="0.1.1",
     author="Praekelt Consulting",
     author_email="dev@praekelt.com",
     license="BSD",
